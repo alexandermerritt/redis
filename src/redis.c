@@ -53,9 +53,15 @@
 #include <sys/utsname.h>
 #include <locale.h>
 
+#include <sys/mman.h>
+
 /* Our shared "common" objects */
 
 struct sharedObjectsStruct shared;
+
+/* Track simple set/del commands memory usage for JUST the key and
+ * object sizes, irrespective of database. */
+long KEYSIZE, OBJSIZE;
 
 /* Global vars that are actually used as constants. The following double
  * values are used for double on-disk serialization, and are initialized
@@ -3033,8 +3039,10 @@ sds genRedisInfoString(char *section) {
             vkeys = dictSize(server.db[j].expires);
             if (keys || vkeys) {
                 info = sdscatprintf(info,
-                    "db%d:keys=%lld,expires=%lld,avg_ttl=%lld\r\n",
-                    j, keys, vkeys, server.db[j].avg_ttl);
+                    "db%d:keys=%lld,expires=%lld,avg_ttl=%lld,"
+                    "keysize=%ld,objsize=%ld\r\n",
+                    j, keys, vkeys, server.db[j].avg_ttl,
+                    KEYSIZE, OBJSIZE);
             }
         }
     }
@@ -3578,6 +3586,13 @@ void redisSetProcTitle(char *title) {
 
 int main(int argc, char **argv) {
     struct timeval tv;
+
+#if 0
+    if (mlockall(MCL_CURRENT| MCL_FUTURE)) {
+        perror("mlockall");
+        return 1;
+    }
+#endif
 
     /* We need to initialize our libraries, and the server configuration. */
 #ifdef INIT_SETPROCTITLE_REPLACEMENT

@@ -95,6 +95,11 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
     int retval = dictAdd(db->dict, copy, val);
 
     redisAssertWithInfo(NULL,key,retval == REDIS_OK);
+    KEYSIZE += sdslen(key->ptr);
+    OBJSIZE += sdslen(val->ptr);
+    //printf("set: key %lu '%s'    val %lu '%s'\n",
+            //sdslen(key->ptr), (char*)key->ptr,
+            //sdslen(val->ptr), (char*)val->ptr);
     if (val->type == REDIS_LIST) signalListAsReady(db, key);
     if (server.cluster_enabled) slotToKeyAdd(key);
  }
@@ -106,9 +111,14 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
  * The program is aborted if the key was not already present. */
 void dbOverwrite(redisDb *db, robj *key, robj *val) {
     dictEntry *de = dictFind(db->dict,key->ptr);
+    if (de) {
+        robj *oldval = dictGetVal(de);
+        OBJSIZE -= sdslen(oldval->ptr);
+    }
 
     redisAssertWithInfo(NULL,key,de != NULL);
     dictReplace(db->dict, key->ptr, val);
+    OBJSIZE += sdslen(val->ptr);
 }
 
 /* High level Set operation. This function can be used in order to set
@@ -160,6 +170,15 @@ robj *dbRandomKey(redisDb *db) {
 
 /* Delete a key, value, and associated expiration entry if any, from the DB */
 int dbDelete(redisDb *db, robj *key) {
+    dictEntry *de = dictFind(db->dict, key->ptr);
+    if (de) {
+        robj *val = dictGetVal(de);
+        //printf("del: key %lu '%s'    val %lu '%s'\n",
+                //sdslen(key->ptr), (char*)key->ptr,
+                //sdslen(val->ptr), (char*)val->ptr);
+        KEYSIZE -= sdslen(key->ptr);
+        OBJSIZE -= sdslen(val->ptr);
+    }
     /* Deleting an entry from the expires dict will not free the sds of
      * the key, because it is shared with the main dictionary. */
     if (dictSize(db->expires) > 0) dictDelete(db->expires,key->ptr);

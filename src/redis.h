@@ -476,6 +476,9 @@ typedef struct redisDb {
     long long avg_ttl;          /* Average TTL, just for stats */
 } redisDb;
 
+// Aggregate size of keys and objects
+extern long KEYSIZE, OBJSIZE;
+
 /* Client MULTI/EXEC state */
 typedef struct multiCmd {
     robj **argv;
