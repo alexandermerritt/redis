@@ -30,6 +30,7 @@
 #include "redis.h"
 #include "cluster.h"
 
+#include <assert.h>
 #include <signal.h>
 #include <ctype.h>
 
@@ -96,6 +97,8 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
 
     redisAssertWithInfo(NULL,key,retval == REDIS_OK);
     KEYSIZE += sdslen(key->ptr);
+    assert(val->encoding == REDIS_ENCODING_EMBSTR
+            && !"this branch only tracks objects which are strings");
     OBJSIZE += sdslen(val->ptr);
     //printf("set: key %lu '%s'    val %lu '%s'\n",
             //sdslen(key->ptr), (char*)key->ptr,
